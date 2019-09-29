@@ -13,4 +13,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class Body {
     @XmlElement(name="AppLoginResponse")
     private AppLoginResponse appLoginResponse;
+
+    @XmlElement(name="AppLoginOutResult")
+    private AppLoginOutResult appLoginOutResult;
 }

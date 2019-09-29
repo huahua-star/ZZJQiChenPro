@@ -9,6 +9,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 @Data
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlRootElement(name="AppLoginResponse")
-public class AppLoginResponse {
-    private Boolean appLoginResult;
+public class AppLoginOutResult {
+    private Boolean AppLoginOutResult;
 }

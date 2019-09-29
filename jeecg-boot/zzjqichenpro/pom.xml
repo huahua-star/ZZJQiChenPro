@@ -20,6 +20,7 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
+
         <repository>
             <id>jeecg</id>
             <name>jeecg Repository</name>
@@ -32,6 +33,10 @@
 
     </repositories>
     <dependencies>
+        <dependency>
+            <groupId>org.jdom</groupId>
+            <artifactId>jdom2</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.jeecgframework.boot</groupId>
             <artifactId>jeecg-boot-base-common</artifactId>
