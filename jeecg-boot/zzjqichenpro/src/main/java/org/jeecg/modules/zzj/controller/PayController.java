@@ -448,9 +448,340 @@ public class PayController {
             return SetResultUtil.setResult(result,ReturnMessage.Exception,ReturnCode.erorDateBase,null,false);//异常
         }
     }
+    /**
+     * 第一步
+     * 银联预授权 与 预授权完成
+     * @param amount
+     * @param dealType
+     * @param reservationNumber
+     * @param roomNum
+     * @return
+     */
+    @AutoLog(value = "银联预授权")
+    @ApiOperation(value="银联预授权", notes="银联预授权")
+    @RequestMapping(value = "/UMS_Init")
+    private Result<TblTxnp> UMS_SetReq(String amount,Integer dealType,String reservationNumber,String roomNum){
+        log.info("UMS_SetReq()进入amount:{}dealType:{}reservationNumber{}roomNum{}",amount,dealType,reservationNumber,roomNum);
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        try {
+            //Todo  需要 金额 amount 转成 000000000001格式  单位为分
+            if(reservationNumber==null){
+                return SetResultUtil.setResult(result,ReturnMessage.lackParameter,ReturnCode.lackParameter,null,false);
+            }
+            //初始化
+            log.info("初始化");
+            iRet = UMS_Init();
+            log.info("进入UMS_Init()方法");
+            if(iRet!=0){
+                log.error("UMS_Init(),UMS_SetReq()方法结束初始化失败");
+                return SetResultUtil.setErrorResult(result);
+            }
+            log.info("UMS_Init()结束");
+            //银行卡的卡号#加上空格凑够1024
+            for (int i = 0; i < 1024; i++) {
+                strMemo[i] = ' ';
+            }
+            Date thisTime = new Date();
+            SimpleDateFormat fmt=new SimpleDateFormat("YYYYMMDD");
+            String cpInReq ;
+            //0普通支付 1创建预授权订单
+            log.info("根据dealType字段判断支付类型dealType:{}",dealType);
+            String payForm ="00"; //普通支付
+            if(dealType == 1){
+                //预授权支付
+                log.info("添加预授权");
+                payForm = "08";
+            }
+            log.info("设置入参");
+            Double money = Double.parseDouble(amount) * 100;
+            String qian = String.format("%012d", money.intValue());
+            cpInReq = "00000000" + "11111111" + payForm
+                    + qian + "333333" +  fmt.format(thisTime) + "555555555555"
+                    + "666666" + "777777" + String.valueOf(strMemo) + "888";
+            iRet = umsips.instanceDll.UMS_SetReq(cpInReq);
+            if(iRet!=0){
+                log.error("UMS_SetReq()结束参数传入失败iRet:{}",iRet);
+                return SetResultUtil.setErrorResult(result);
+            }
+            log.info("参数传入成功添加订单信息");
+            TblTxnp tre = new TblTxnp();
+            tre.setId(UuidUtils.getUUID());
+            tre.setPreamount(new BigDecimal(amount));
+            tre.setPreOrderid(reservationNumber);
+            tre.setOrderid(UUID.randomUUID().toString().replace("-", ""));
+            tre.setRoomnum(roomNum);
+            tre.setCreateTime(new SimpleDateFormat("yyyyMMdd HHmmss").format(new Date()));
+            // 状态码
+            tre.setState("2");
+            tre.setPaytype(dealType+"");
+            tre.setPaymethod("0");
+            tre.setAmount(new BigDecimal("0"));
+            tblTxnpService.save(tre);
+            log.info("UMS_SetReq()结束");
+            return UMS_EnterCard();
+        }catch (Exception e) {
+            log.error("UMS_SetReq()方法出现异常:{}", e.getMessage());
+            return SetResultUtil.setExceptionResult(result);
+        }
+    }
+
+    /**
+     * 进卡操作
+     * @return
+     */
+    private Result<TblTxnp> UMS_EnterCard()  {
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        try {
+            log.info("进入UMS_EnterCard()方法");
+            iRet = umsips.instanceDll.UMS_EnterCard();
+            if(iRet>2){
+                log.error("UMS_EnterCard()结束进卡操作失败iRet:{}",iRet);
+                return  SetResultUtil.setErrorResult(result);
+            }
+            log.error("UMS_EnterCard()结束");
+            return SetResultUtil.setResult(result,ReturnMessage.success,ReturnCode.getSuccess,null,true);
+        }catch (Exception e){
+            log.error("UMS_EnterCard()方法出现异常:{}", e.getMessage());
+            return SetResultUtil.setErrorResult(result);
+        }
+
+    }
+    /**
+     * 第三部
+     * 卡的位置
+     * @return
+     */
+    @RequestMapping(value = "/UMS_CheckCard")
+    public Result<TblTxnp> UMS_CheckCard() {
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        try {
+            log.info("进入UMS_CheckCard()方法");
+            byte[] state_out = new byte[1];
+            iRet = umsips.instanceDll.UMS_CheckCard(state_out);
+            log.info("读取卡的位置iRet:{}",iRet);
+            //TODO 有可能需要弹卡
+            if (state_out[0] == 52) {
+                log.error("UMS_CheckCard()卡在插卡器卡口位置");
+                //UMS_EjectCard("卡在插卡器卡口位置,");
+                return SetResultUtil.setErrorMsgResult(result,"UMS_CheckCard()结束卡在插卡器卡口位置");
+            }else if (state_out[0] == 53) {
+                log.error("UMS_CheckCard()结束未检测到卡");
+                return SetResultUtil.setErrorMsgResult(result,"UMS_CheckCard()未检测到卡");
+            }else if (state_out[0] == 56) {
+                log.error("UMS_CheckCard()结束卡在电子现金感应器上");
+                //UMS_EjectCard("卡在电子现金感应器上,");
+                return SetResultUtil.setErrorMsgResult(result,"UMS_CheckCard()结束卡在电子现金感应器上");
+            }else if (state_out[0] == 57){
+                log.error("UMS_CheckCard()结束卡在非接联机感应器上");
+                //UMS_EjectCard("卡在非接联机感应器上,");
+                return SetResultUtil.setErrorMsgResult(result,"卡在非接联机感应器上");
+            }
+            log.info("UMS_CheckCard()结束");
+            return SetResultUtil.setSuccessResult(result);
+        } catch (Exception e){
+            log.error("UMS_CheckCard()方法出现异常:{}", e.getMessage());
+            return SetResultUtil.setExceptionResult(result);
+        }
+
+    }
 
 
+    /**
+     * 第四步
+     * 读取卡的信息
+     * @return
+     */
+    @RequestMapping(value = "/UMS_ReadCard")
+    public Result<TblTxnp> UMS_ReadCard() {
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        try {
+            log.info("进入UMS_ReadCard()方法");
+            byte[] cpData = new byte[20];
+            //读取卡的信息
+            iRet = umsips.instanceDll.UMS_ReadCard(cpData);
+            log.info("读取卡信息cpData:{}",new String(cpData));
+            if(iRet>4){
+                log.error("UMS_ReadCard()结束读取卡信息失败iRet:{}",iRet);
+                UMS_EjectCard("读取卡信息失败");
+                return SetResultUtil.setErrorMsgResult(result,"读取卡信息失败");
+            }
+            //开启密码键盘
+            int keyboard =UMS_StartPin().getCode();
+            if(keyboard != 200){
+                UMS_EjectCard("开启密码键盘失败,");
+                return SetResultUtil.setErrorMsgResult(result,"开启密码键盘失败");
+            }
+            return SetResultUtil.setSuccessResult(result);
+        } catch (Exception e){
+            log.error("UMS_ReadCard()方法出现异常:{}", e.getMessage());
+            UMS_EjectCard("读卡信息接口出现异常,");
+            return SetResultUtil.setExceptionResult(result);
+        }
 
+    }
+
+    /**
+     * 轮训客户输入的密码
+     * @return
+     */
+    @RequestMapping(value = "/UMS_GetOnePass")
+    public Result<TblTxnp> UMS_GetOnePass() {
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        log.info("轮训客户输入的密码");
+        byte key_out[] = new byte[1];
+        while (true) {
+            iRet = umsips.instanceDll.UMS_GetOnePass(key_out);
+            if (iRet != 0) {
+                log.error("UMS_ReadCard()结束输入密码失败");
+                return SetResultUtil.setErrorMsgResult(result,"输入密码失败");
+            }
+            if (key_out[0] == 13) {
+                log.info("UMS_ReadCard()结束密码输入完成");
+                break;
+            } else if (key_out[0] == 2) {
+                log.error("UMS_ReadCard()结束密码输入超时");
+                //return R.error(2,"密码输入超时");
+                return SetResultUtil.setErrorMsgResult(result,"密码输入超时");
+            } else if (key_out[0] == 27) {
+                log.info("UMS_ReadCard()结束用户取消");
+                break;
+            } else if (key_out[0] == 8) {
+                log.info("退格");
+            }
+            try {
+                Thread.sleep(600);
+            } catch (InterruptedException e1) {
+                // TODO Auto-generated catch block
+                e1.printStackTrace();
+            }
+            // RetCode.setText("启动加密返回:"+iRet+"");
+        }
+        return SetResultUtil.setSuccessResult(result);
+    }
+
+    /**
+     * 第五步
+     * 获取密码
+     */
+    @RequestMapping(value = "/UMS_GetPin")
+    public Result<TblTxnp> UMS_GetPin(String reservationNumber) {
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        try {
+            log.info("进入UMS_GetOnePass()方法");
+            iRet = umsips.instanceDll.UMS_GetPin();
+            System.out.println("取密文返回:" + iRet);
+            if (iRet != 0){
+                log.error("UMS_GetOnePass()方法结束读取秘钥失败");
+                UMS_EjectCard("读取秘钥失败,");
+                return SetResultUtil.setErrorMsgResult(result,"读取秘钥失败");
+            }
+            log.info("UMS_GetOnePass()方法结束");
+            return UMS_TransCard(reservationNumber);
+        }catch (Exception e){
+            log.error("UMS_GetOnePass()方法出现异常:{}", e.getMessage());
+            UMS_EjectCard("UMS_GetOnePass()方法异常,");
+            return SetResultUtil.setExceptionResult(result);
+        }
+    }
+
+    /**
+     * 第六步
+     * 交易
+     * @return
+     */
+    //@RequestMapping(value = "/UMS_TransCard")
+    public Result<TblTxnp> UMS_TransCard(String reservationNumber) throws UnsupportedEncodingException {
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        try {
+            log.info("进入UMS_TransCard()方法reservationNumber:{}",reservationNumber);
+            byte[] strReq = new byte[3000];
+            byte[] strResp = new byte[3000];
+            log.info("确认交易");
+            iRet = umsips.instanceDll.UMS_TransCard(strReq, strResp);
+            String thisTime =  new String(subBytes(new String(strResp,"gbk").getBytes(), 90, 6));//交易时间
+            String warrantyNo = new String(subBytes(new String(strResp,"gbk").getBytes(), 108, 6)); // 授权号
+            String cardNo = new String(subBytes(new String(strResp,"gbk").getBytes(), 42, 20)); // 卡号
+            String  zong = warrantyNo+thisTime+cardNo;
+            TblTxnp tblTxn=tblTxnpService.getOne(new QueryWrapper<TblTxnp>().ge("preOrderid",reservationNumber));
+            if(zong!=null){
+                tblTxn.setOrderid(zong);
+            }
+            log.info("修改订单中的订单号用于预授权结算");
+            tblTxnpService.updateById(tblTxn);
+            log.info("调用弹卡操作");
+            //交易成功弹卡
+            UMS_EjectCard("");
+            log.info("弹卡成功执行读卡器关闭操作");
+            iRet = umsips.instanceDll.UMS_CardClose();
+            if (iRet != 0){
+                log.error("读卡器关闭失败UMS_TransCard()方法结束");
+                return SetResultUtil.setErrorMsgResult(result,"读卡器关闭失败");
+            }
+            log.info("读卡器关闭成功UMS_TransCard()方法结束");
+            return SetResultUtil.setSuccessResult(result,new String(strResp,"gbk"));
+        } catch (Exception e){
+            log.error("UMS_TransCard()方法出现异常:{}", e.getMessage());
+            UMS_EjectCard("UMS_TransCard()方法出现异常,");
+            return SetResultUtil.setExceptionResult(result);
+        }
+
+    }
+
+    /**
+     * 弹卡
+     * @return
+     */
+    @RequestMapping(value = "/UMS_EjectCard")
+    public Result<TblTxnp> UMS_EjectCard(String shibai) {
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        iRet = umsips.instanceDll.UMS_EjectCard();
+        if(iRet!=0){
+            //TODO 可以加入吞卡
+            log.error("弹卡失败调用吞卡操作，提醒入住人找前台那银行卡");
+            iRet =  umsips.instanceDll.UMS_CardSwallow();
+            if(iRet!=0){
+                log.error("UMS_TransCard()方法结束吞卡失败");
+                return SetResultUtil.setErrorMsgResult(result,"UMS_TransCard()方法结束吞卡失败");
+            }
+            log.error("UMS_TransCard()方法结束弹卡失败，已吞卡");
+            return SetResultUtil.setErrorMsgResult(result,"UMS_TransCard()方法结束弹卡失败，已吞卡");
+        }
+        return SetResultUtil.setSuccessResult(result,shibai+"弹卡成功");
+    }
+
+    //初始化
+    public int UMS_Init() {
+        iRet = umsips.instanceDll.UMS_Init(1);
+        return iRet;
+    }
+
+    /**
+     * 开启密码键盘
+     * @return
+     */
+    public Result<TblTxnp> UMS_StartPin() {
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        log.info("进入UMS_StartPin()方法");
+        iRet = umsips.instanceDll.UMS_StartPin();
+        if(iRet!=0){
+            log.error("UMS_StartPin()开启密码键盘失败iRet:{}",iRet);
+            return SetResultUtil.setResult(result,ReturnMessage.openKeyboardError,ReturnCode.erorDateBase,null,false);
+        }
+        return SetResultUtil.setResult(result,ReturnMessage.success,ReturnCode.getSuccess,null,true);
+    }
+
+    /**
+     * 读取返回信息
+     * @param src
+     * @param begin
+     * @param count
+     * @return
+     */
+    public static byte[] subBytes(byte[] src, int begin, int count) {
+        byte[] bs = new byte[count];
+        System.arraycopy(src, begin, bs, 0, count);
+        return bs;
+    }
 
 
 }

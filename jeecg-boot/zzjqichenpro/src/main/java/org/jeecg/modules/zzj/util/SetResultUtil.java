@@ -2,6 +2,8 @@ package org.jeecg.modules.zzj.util;
 
 import org.apache.poi.ss.formula.functions.T;
 import org.jeecg.common.api.vo.Result;
+import org.jeecg.modules.zzj.common.ReturnCode;
+import org.jeecg.modules.zzj.common.ReturnMessage;
 
 public class SetResultUtil {
     public static <T> Result<T> setResult(Result<T> result,String message,Integer code,T returnResult,Boolean flag){
@@ -9,6 +11,41 @@ public class SetResultUtil {
         result.setSuccess(flag);
         result.setResult(returnResult);
         result.setCode(code);
+        return result;
+    }
+    public static <T> Result<T> setErrorResult(Result<T> result){
+        result.setMessage("发生了错误。");
+        result.setSuccess(false);
+        result.setResult(null);
+        result.setCode(500);
+        return result;
+    }
+    public static <T> Result<T> setExceptionResult(Result<T> result){
+        result.setMessage("发生了异常。");
+        result.setSuccess(false);
+        result.setResult(null);
+        result.setCode(500);
+        return result;
+    }
+    public static <T> Result<T> setErrorMsgResult(Result<T> result,String message){
+        result.setMessage(message);
+        result.setSuccess(false);
+        result.setResult(null);
+        result.setCode(500);
+        return result;
+    }
+    public static <T> Result<T> setSuccessResult(Result<T> result){
+        result.setMessage(ReturnMessage.success);
+        result.setSuccess(true);
+        result.setResult(null);
+        result.setCode(ReturnCode.getSuccess);
+        return result;
+    }
+    public static <T> Result<T> setSuccessResult(Result<T> result,String message){
+        result.setMessage(message);
+        result.setSuccess(true);
+        result.setResult(null);
+        result.setCode(ReturnCode.getSuccess);
         return result;
     }
 }

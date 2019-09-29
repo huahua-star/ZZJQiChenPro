@@ -21,4 +21,5 @@ public class ReturnMessage {
     public static final String parameterFailure="参数传入失败";
     public static final String prePayFailure="预授权结算失败";
     public static final String revocationFailure="预授权撤销失败";
+    public static final String openKeyboardError="开启密码键盘失败";
 }
