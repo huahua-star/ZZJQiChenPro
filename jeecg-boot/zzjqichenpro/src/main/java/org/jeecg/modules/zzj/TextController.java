@@ -40,6 +40,26 @@ public class TextController {
         envelope.setBody(body);
         String xml=XmlUtil.convertToXml(envelope,"utf-8");
         System.out.println(xml);*/
+        String xm="<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
+                "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" " +
+                "xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">" +
+                "<soap:Header>" +
+                "<KwsSoapHeader xmlns=\"http://www.shijinet.com.cn/kunlun/kws/1.1/\">" +
+                "<SessionId>44ffcc1d-8c66-4f40-b253-ddc85c0975b5</SessionId>" +
+                "<RetCode>6001</RetCode>" +
+                "</KwsSoapHeader>" +
+                "</soap:Header>" +
+                "<soap:Body>" +
+                "<AppLoginResponse xmlns=\"http://www.shijinet.com.cn/kunlun/kws/1.1/\">" +
+                "<AppLoginResult>true</AppLoginResult>" +
+                "</AppLoginResponse>" +
+                "</soap:Body>" +
+                "</soap:Envelope>\n";
+        Envelope envelope=XmlUtil.XmlToBean(xm,Envelope.class);
+        System.out.println(envelope.getHeader().getKwsSoapHeader().getSessionId());
+
+
     }
 }
     /*String xml=new String("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" +

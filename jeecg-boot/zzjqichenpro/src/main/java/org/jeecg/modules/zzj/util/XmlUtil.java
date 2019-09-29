@@ -2,8 +2,13 @@ package org.jeecg.modules.zzj.util;
 
 import lombok.experimental.SuperBuilder;
 import org.apache.poi.ss.formula.functions.T;
+import org.xml.sax.InputSource;
+import org.xml.sax.XMLReader;
 
 import javax.xml.bind.*;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.Source;
+import javax.xml.transform.sax.SAXSource;
 import java.io.StringReader;
 import java.io.StringWriter;
 
@@ -13,7 +18,13 @@ public class XmlUtil {
     public static <T> T XmlToBean(String xmlPath,Class<T> load) throws Exception {
         JAXBContext context=JAXBContext.newInstance(load);
         Unmarshaller unmarshaller =context.createUnmarshaller();
-        return (T) unmarshaller.unmarshal(new StringReader(xmlPath));
+        StringReader reader = new StringReader(xmlPath);
+        SAXParserFactory sax = SAXParserFactory.newInstance();
+        sax.setNamespaceAware(false);
+        XMLReader xmlReader = sax.newSAXParser().getXMLReader();
+        Source source = new SAXSource(xmlReader, new InputSource(reader));
+        return (T) unmarshaller.unmarshal(source);
+        //return (T) unmarshaller.unmarshal(new StringReader(xmlPath));
     }
     /**
      * JavaBean转换成xml
