@@ -40,7 +40,7 @@ public class TblTxnp implements Serializable{
 	/**预定号*/
 	@Excel(name = "预订号", width = 15)
 	@ApiModelProperty(value = "预订号")
-	private java.lang.String preOrderid;
+	private java.lang.String preorderid;
 	/**支付方式 0银行卡 1支付宝 2微信*/
 	@Excel(name = "支付方式 0银行卡 1支付宝 2微信", width = 15)
     @ApiModelProperty(value = "支付方式 0银行卡 1支付宝 2微信")

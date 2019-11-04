@@ -1,6 +1,5 @@
 package org.jeecg.modules.zzj.entity;
 
-import com.sun.xml.internal.txw2.annotation.XmlElement;
 import lombok.Data;
 
 import javax.xml.bind.annotation.XmlAccessType;

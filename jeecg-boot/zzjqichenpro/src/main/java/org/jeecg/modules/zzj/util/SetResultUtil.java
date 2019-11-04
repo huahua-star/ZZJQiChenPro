@@ -48,4 +48,25 @@ public class SetResultUtil {
         result.setCode(ReturnCode.getSuccess);
         return result;
     }
+    public static <T> Result<T> setSuccessResult(Result<T> result,String message,T data){
+        result.setMessage(message);
+        result.setSuccess(true);
+        result.setResult(data);
+        result.setCode(ReturnCode.getSuccess);
+        return result;
+    }
+    public static <T> Result<T> setLackParamResult(Result<T> result,String message){
+        result.setMessage(message);
+        result.setSuccess(false);
+        result.setResult(null);
+        result.setCode(ReturnCode.lackParameter);
+        return result;
+    }
+    public static <T> Result<T> setNotFoundResult(Result<T> result,String message){
+        result.setMessage(message);
+        result.setSuccess(false);
+        result.setResult(null);
+        result.setCode(ReturnCode.notFound);
+        return result;
+    }
 }

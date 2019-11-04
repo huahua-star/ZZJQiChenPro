@@ -14,14 +14,17 @@ import org.jeecg.modules.zzj.common.ReturnCode;
 import org.jeecg.modules.zzj.common.ReturnMessage;
 import org.jeecg.modules.zzj.common.umsips;
 import org.jeecg.modules.zzj.entity.CheckIn;
+import org.jeecg.modules.zzj.entity.Room;
+import org.jeecg.modules.zzj.entity.RoomType;
 import org.jeecg.modules.zzj.entity.TblTxnp;
+import org.jeecg.modules.zzj.service.IRoomService;
+import org.jeecg.modules.zzj.service.IRoomTypeService;
 import org.jeecg.modules.zzj.service.ITblTxnpService;
-import org.jeecg.modules.zzj.util.PreOccupancyUtil;
-import org.jeecg.modules.zzj.util.SetResultUtil;
-import org.jeecg.modules.zzj.util.UuidUtils;
+import org.jeecg.modules.zzj.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
@@ -29,10 +32,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @Api(tags="支付相关功能")
@@ -42,14 +42,142 @@ public class PayController {
     @Autowired
     private ITblTxnpService tblTxnpService;
 
+    @Autowired
+    private IRoomService roomService;
+
+    @Autowired
+    private IRoomTypeService roomTypeService;
     static int iRet;
     static char strMemo[] = new char[1024];
 
     public final static String nonce_str = UuidUtils.getUUID();
-    //@Value("${qrDir}")
+    @Value("${qrDir}")
     private String qrDir;
-    //@Value("${alipay.apikey}")
+    @Value("${alipay.apikey}")
     private String apikey;
+
+    /**
+     * 发起支付请求
+     *
+     * @param amount            金额
+     * @param roomNum           房型号
+     * @param reservationNumber 港中旅系统的订单号
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "/pay")
+    public Result<TblTxnp> pay(@RequestParam String amount, @RequestParam String roomNum, @RequestParam String reservationNumber,
+                 @RequestParam Integer payType) throws Exception {
+        log.info("进入pay()方法,amount:{}roomNum:{}reservationNumber:{}payType:{}", amount, roomNum, reservationNumber, payType);
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        try {
+            log.info("根据roomNum查询房间名称");
+            Room room=roomService.getOne(new QueryWrapper<Room>().eq("roomnum",roomNum));
+            String roomName=null;
+            if (null!=room) {
+                RoomType roomType=roomTypeService.getById(room.getTypeid());
+                roomName=roomType.getName();
+            }else{
+                return SetResultUtil.setErrorMsgResult(result,"房间号不存在");
+            }
+            TblTxnp tblTxnp=new TblTxnp();
+            Map map = new HashMap<>();
+            // payType 0 支付宝 1微信
+            log.info("根据payType判断是支付宝还是微信");
+            String orderid = UUID.randomUUID().toString().replace("-", "");
+            tblTxnp.setPaymethod(payType+"");
+            switch (payType) {
+                case 1:
+                    log.info("进入支付宝支付");
+                    map = AlipayUtil.trade_precreate(qrDir, amount, roomNum, roomName);
+                    break;
+                case 2:
+                    log.info("进入微信支付");
+                    Double a = Double.parseDouble(amount) * 100;
+                    String totalFee = a.intValue() + "";
+                    map = null;//WxpayUtili.getqrcode(qrDir, totalFee);
+                    break;
+            }
+            // 添加交易记录
+            log.info("添加交易记录");
+            tblTxnp.setId(UuidUtils.getUUID());
+            tblTxnp.setPreamount(new BigDecimal(0));
+            tblTxnp.setAmount(new BigDecimal(amount));
+            tblTxnp.setOrderid(orderid);
+            tblTxnp.setPreorderid(reservationNumber);
+            tblTxnp.setRoomnum(roomNum);
+            tblTxnp.setState("1");
+            tblTxnp.setPaytype("0");
+            tblTxnp.setCreateTime(new SimpleDateFormat("yyyyMMdd HHmmss").format(new Date()));
+            tblTxnpService.save(tblTxnp);
+            log.info("pay()方法之行结束return:{}", map);
+            result.setMap(map);
+            return SetResultUtil.setSuccessResult(result);
+        } catch (Exception e) {
+            log.error("pay()方法出现异常:{}", e.getMessage());
+            return SetResultUtil.setExceptionResult(result);
+        }
+    }
+
+    /**
+     * 查询是否支付成功
+     *
+     * @param outTradeNo 商户号
+     * @return
+     */
+   /* @RequestMapping(value = "/query")
+    public Result<TblTxnp> query(@RequestParam String outTradeNo, @RequestParam Integer payType) {
+        log.info("进入query()方法outTradeNo:{}payType:{}", outTradeNo, payType);
+        Result<TblTxnp> result = new Result<TblTxnp>();
+        try {
+            log.info("根据outTradeNo查询信息");
+
+
+            List<TransactionRecordEntity> personList = transactionRecordService
+                    .selectList(new EntityWrapper<TransactionRecordEntity>().eq("out_trade_no", outTradeNo));
+            String error = null;
+            log.info("根据payType判断支付宝或微信支付");
+            switch (payType) {
+                case 0:
+                    if (AlipayUtil.trade_query(outTradeNo)) {
+                        log.info("支付宝支付成功");
+                        break;
+                    } else {
+                        error = "暂未查询到该订单支付成功";
+                        break;
+                    }
+
+                case 1:
+                    Map map = WxpayUtili.query(outTradeNo);
+                    if (map.get("trade_state") == "SUCCESS") {
+                        log.info("微信支付成功");
+                        break;
+                    } else {
+                        error = "暂未查询到该订单支付成功";
+                        break;
+                    }
+
+            }
+            if (error != null) {
+                log.info("query()方法执行结束暂未查询到该订单支付成功");
+                return R.error("暂未查询到该订单支付成功");
+            }
+            for (int i = 0; i < personList.size(); i++) {
+                personList.get(i).setStatus(0);
+                personList.get(i).setCompleteTime(new Date());
+                personList.get(i).setActualMoney(personList.get(i).getMoney());
+            }
+            log.info("检测到支付成功修改支付状态");
+            transactionRecordService.updateAllColumnBatchById(personList);
+            log.info("query()方法执行结束return:{}", R.ok());
+            return R.ok();
+        } catch (Exception e) {
+            log.error("query()方法出现异常:{}", e.getMessage());
+            return R.error();
+        }
+
+    }*/
+
 
 
     @AutoLog(value = "获取二维码")
@@ -80,7 +208,8 @@ public class PayController {
     @AutoLog(value = "删除二维码")
     @ApiOperation(value="删除二维码", notes="删除二维码")
     @RequestMapping(value = "/deleteQrImage")
-    public void deleteQrImage(String filePath) {
+    public Result<TblTxnp> deleteQrImage(String filePath) {
+        Result<TblTxnp> result=new Result<TblTxnp>();
         log.info("deleteQrImage()方法filePath:{}", filePath);
         try {
             log.info("根据filePath删除文件");
@@ -88,8 +217,12 @@ public class PayController {
             if (file.exists() && file.isFile()) {
                 file.delete();
             }
+            SetResultUtil.setSuccessResult(result,"成功删除二维码");
+            return result;
         } catch (Exception e) {
             log.error("deleteQrImage()方法出现异常:{}", e.getMessage());
+            SetResultUtil.setExceptionResult(result);
+            return result;
         }
     }
     /**
@@ -126,7 +259,7 @@ public class PayController {
             tbl.setId(UuidUtils.getUUID());
             tbl.setPreamount(new BigDecimal(amount));
             tbl.setOrderid(outTradeNo);//自己生产的订单号
-            tbl.setPreOrderid(reservationNumber);
+            tbl.setPreorderid(reservationNumber);
             tbl.setPaymethod(payType.toString());
             log.info("empowerpay()方法执行结束return:{}",ReturnCode.postSuccess);
            /* Map resultMap = new HashMap();
@@ -145,6 +278,7 @@ public class PayController {
                 result.setCode(ReturnCode.postSuccess);
                 result.setMessage(ReturnMessage.success);
                 log.info("empowerpay()方法执行结束return:{}",result);
+                result.setMap(qrcode);
                 return result;
             }
             result.setCode(ReturnCode.parameterError);
@@ -507,7 +641,7 @@ public class PayController {
             TblTxnp tre = new TblTxnp();
             tre.setId(UuidUtils.getUUID());
             tre.setPreamount(new BigDecimal(amount));
-            tre.setPreOrderid(reservationNumber);
+            tre.setPreorderid(reservationNumber);
             tre.setOrderid(UUID.randomUUID().toString().replace("-", ""));
             tre.setRoomnum(roomNum);
             tre.setCreateTime(new SimpleDateFormat("yyyyMMdd HHmmss").format(new Date()));

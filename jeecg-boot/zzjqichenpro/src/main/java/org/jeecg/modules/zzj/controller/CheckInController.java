@@ -10,8 +10,12 @@ import java.net.URLDecoder;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import io.swagger.models.Xml;
+import org.jdom2.Document;
 import org.jeecg.modules.zzj.common.ReturnCode;
 import org.jeecg.modules.zzj.common.ReturnMessage;
+import org.jeecg.modules.zzj.entity.Envelope;
 import org.jeecg.modules.zzj.mapper.CheckInMapper;
 import io.netty.util.internal.StringUtil;
 import org.jeecg.common.api.vo.Result;
@@ -24,6 +28,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
+import org.jeecg.modules.zzj.util.GangZhongLvInterfaceHttpFactory;
+import org.jeecg.modules.zzj.util.XmlUtil;
 import org.jeecgframework.poi.excel.ExcelImportUtil;
 import org.jeecgframework.poi.excel.def.NormalExcelConstants;
 import org.jeecgframework.poi.excel.entity.ExportParams;
@@ -189,28 +195,41 @@ public class CheckInController {
 	 @GetMapping(value = "/getOrders")
 	 public Result<CheckIn> getOrders(CheckIn checkIn) throws Exception {
 	 	Result<CheckIn> result = new Result<CheckIn>();
+		 //是否需要判断该订单可以 自助入住
+	 	String GzlUrl="";
+	 	String SOAPAction="";
+	 	//获取login 返回的sessionId 的 xml
+	 	String loginXml= GangZhongLvInterfaceHttpFactory.AppLogin();
+	 	//获取文档类型的xml
+	 	Document document=XmlUtil.strXmlToDocument(loginXml);
+	 	//获取sessionId
+	 	String sessionId=XmlUtil.getValueByElementName(document,"SessionId");
 	 	Map<String,String> map=new HashMap<>();
 		if (StringUtil.isNullOrEmpty(checkIn.getName()))
 		{
-			map.put("name",checkIn.getName());
+			map.put("BookerName",checkIn.getName());
 		}
 		 if (StringUtil.isNullOrEmpty(checkIn.getPhonenum()))
 		 {
-			 map.put("phone",checkIn.getPhonenum());
+			 map.put("BookerMobile",checkIn.getPhonenum());
 		 }
 		 if (StringUtil.isNullOrEmpty(checkIn.getOrderid()))
 		 {
-			 map.put("orderid",checkIn.getOrderid());
+			 map.put("id",checkIn.getOrderid());
 		 }
 		if (map.size()>0){
-			/*//xml文件转对象
-			File file = new File("");
-			JAXBContext jaxbC = JAXBContext.newInstance(CheckIn.class);
-			Unmarshaller us = jaxbC.createUnmarshaller();
-			CheckIn in=(CheckIn)us.unmarshal(file);
-			//xml 类型的String 字符串 转对象
-			String xml=new String("");
-			CheckIn inCheck= XmlUtil.XmlToBean(xml,CheckIn.class);*/
+			if(null!=map.get("orderid"))
+			{	//拼接发送的xml
+				map.put("id","3460423");
+				String sendXml=XmlUtil.getSendXml(map,sessionId,"GetOrderInfo");
+				GzlUrl="http://58.251.19.224:8081/kws_www/ReservationService.asmx?op=GetOrderInfo";
+				SOAPAction="http://www.shijinet.com.cn/kunlun/kws/1.1/GetOrderInfo";
+				//获得返回的xml
+				String getOrderXml=GangZhongLvInterfaceHttpFactory.soapSpecialConnection(GzlUrl,SOAPAction,sendXml,sessionId);
+				System.out.println(getOrderXml);
+			}else{
+
+			}
 			//获取房间号
 			String roomNum=getRoomNum();
 			//赋值
@@ -229,6 +248,30 @@ public class CheckInController {
 		}
 	 	return result;
 	 }
+	 /**
+	  * test
+	  */
+	 public static void main(String[] args) throws Exception {
+		try {
+			String loginXml= GangZhongLvInterfaceHttpFactory.AppLogin();
+			Document document=XmlUtil.strXmlToDocument(loginXml);
+			String sessionId=XmlUtil.getValueByElementName(document,"SessionId");
+			Map<String,String> map=new HashMap<>();
+			map.put("id","3460422");
+			String sendXml=XmlUtil.getSendXml(map,sessionId,"GetOrderInfo");
+			System.out.println("sendXml:"+sendXml);
+			String GzlUrl="http://58.251.19.224:8081/kws_www/ReservationService.asmx?op=GetOrderInfo";
+			String SOAPAction="http://www.shijinet.com.cn/kunlun/kws/1.1/GetOrderInfo";
+			//获得返回的xml
+			String getOrderXml=GangZhongLvInterfaceHttpFactory.soapSpecialConnection(GzlUrl,SOAPAction,sendXml,sessionId);
+			System.out.println(getOrderXml);
+		 } catch (Exception e) {
+			 e.printStackTrace();
+		 }
+
+	 }
+
+
   /**
       * 导出excel
    *

@@ -28,7 +28,6 @@ import javax.xml.bind.annotation.*;
 @Accessors(chain = true)
 @ApiModel(value="qc_checkin对象", description="入住功能")
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name="CheckIn")
 public class CheckIn {
     
 	/**表id*/
@@ -68,13 +67,22 @@ public class CheckIn {
     @ApiModelProperty(value = "房间号")
 	private java.lang.String roomnum;
 	/**真实入住时间*/
+	@Excel(name = "预定入住时间", width = 15)
+	@ApiModelProperty(value = "预定入住时间")
+	private java.lang.String begintime;
+	/**真实离店时间*/
+	@Excel(name = "预定离店时间", width = 15)
+	@ApiModelProperty(value = "预定离店时间")
+	private java.lang.String endtime;
+
+	/**真实入住时间*/
 	@Excel(name = "真实入住时间", width = 15)
     @ApiModelProperty(value = "真实入住时间")
-	private java.lang.String truecreatetime;
+	private java.lang.String truebegintime;
 	/**真实离店时间*/
 	@Excel(name = "真实离店时间", width = 15)
     @ApiModelProperty(value = "真实离店时间")
-	private java.lang.String trueupdatetime;
+	private java.lang.String trueendtime;
 	/**订单号*/
 	@Excel(name = "订单号", width = 15)
     @ApiModelProperty(value = "订单号")
@@ -103,24 +111,17 @@ public class CheckIn {
 	@Excel(name = "创建人", width = 15)
     @ApiModelProperty(value = "创建人")
 	private java.lang.String createBy;
-	/**预订入住时间*/
-	@Excel(name = "预订入住时间", width = 15)
-    @ApiModelProperty(value = "预订入住时间")
+	/**创建时间*/
+	@Excel(name = "创建时间", width = 15)
+    @ApiModelProperty(value = "创建时间")
 	private java.lang.String createTime;
 	/**修改人*/
 	@Excel(name = "修改人", width = 15)
     @ApiModelProperty(value = "修改人")
 	private java.lang.String updateBy;
-	/**预订离店时间*/
-	@Excel(name = "预订离店时间", width = 15)
-    @ApiModelProperty(value = "预订离店时间")
+	/**修改时间*/
+	@Excel(name = "修改时间", width = 15)
+    @ApiModelProperty(value = "修改时间")
 	private java.lang.String updateTime;
-
-	/*@XmlElement(name="Test")
-	private Test test;
-
-	@XmlElementWrapper(name ="List")
-	@XmlElement(name="Test")
-	private List<Test> list;*/
 
 }

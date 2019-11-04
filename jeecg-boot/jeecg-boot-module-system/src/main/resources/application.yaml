@@ -7,3 +7,11 @@ swagger:
     enable: false
     username: jeecg
     password: jeecg1314
+#发卡机 串口
+sdk:
+  ComHandle: 3
+#读卡器  串口
+sdk1:
+  ComHandle: 7
+# python的写卡服务地址
+cardUrl: http://127.0.0.1:8888

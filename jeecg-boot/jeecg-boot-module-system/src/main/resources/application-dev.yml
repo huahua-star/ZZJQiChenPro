@@ -82,7 +82,6 @@ spring:
         timeBetweenEvictionRunsMillis: 60000
         # 配置一个连接在池中最小生存的时间，单位是毫秒
         minEvictableIdleTimeMillis: 300000
-        validationQuery: SELECT 1 FROM DUAL
         testWhileIdle: true
         testOnBorrow: false
         testOnReturn: false
@@ -94,20 +93,19 @@ spring:
         # 通过connectProperties属性来打开mergeSql功能；慢SQL记录
         connectionProperties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
       datasource:
-        master:
-          url: jdbc:mysql://127.0.0.1:3306/boot2?useUnicode=true&characterEncoding=utf8&autoReconnect=true&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true
-          username: root
-          password: 123456
-          #url: jdbc:mysql://59.110.162.83:3306/kuaijiejiudian?useUnicode=true&characterEncoding=utf8&autoReconnect=true&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true
-          #username: root
-          #password: jiayang
-          driver-class-name: com.mysql.jdbc.Driver
-          # 多数据源配置
-          #multi-datasource1:
-          #url: jdbc:mysql://localhost:3306/jeecg-boot2?useUnicode=true&characterEncoding=utf8&autoReconnect=true&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true
-          #username: root
-          #password: root
-          #driver-class-name: com.mysql.jdbc.Driver
+          master:
+            url: jdbc:mysql://127.0.0.1:3307/qichenzzj?useUnicode=true&characterEncoding=utf8&autoReconnect=true&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true
+            username: root
+            password: hejiahua
+            driver-class-name: com.mysql.jdbc.Driver
+            validationQuery: SELECT 1 FROM DUAL
+            # 多数据源配置
+          datasource2:
+            url: jdbc:sqlserver://47.99.146.180:8999;DatabaseName=8067_Test
+            username: itmanager
+            password: yuntu@163!@#$
+            driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+            validationQuery: SELECT 1
   #redis 配置
   redis:
     database: 0

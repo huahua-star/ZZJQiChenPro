@@ -1,9 +1,7 @@
 package org.jeecg.modules.zzj.util;
 
-import com.sun.xml.internal.ws.wsdl.writer.document.soap.Body;
 import org.apache.commons.io.IOUtils;
-import org.jeecg.modules.zzj.entity.AppLoginOutResult;
-import org.jeecg.modules.zzj.entity.Envelope;
+import org.jdom2.Document;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -22,7 +20,7 @@ public class GangZhongLvInterfaceHttpFactory {
      * @return
      * @throws Exception
      */
-    public String AppLogin() throws Exception{
+    public static String  AppLogin() throws Exception{
         //不传入数据时默认位AppLogin接口 返回SessionId
         String GzlUrl="http://58.251.19.224:8081/kws_www/SecurityService.asmx?op=AppLogin";
         String SOAPAction = "http://www.shijinet.com.cn/kunlun/kws/1.1/AppLogin";
@@ -76,7 +74,7 @@ public class GangZhongLvInterfaceHttpFactory {
      * @return
      * @throws Exception
      */
-    public String soapSpecialConnection(String GzlUrl,String SOAPAction,String XmlS) throws Exception{
+    public static String soapSpecialConnection(String GzlUrl,String SOAPAction,String XmlS,String sessionId) throws Exception{
         //不传入数据时默认位AppLogin接口 返回SessionId
         String xml = new String();
         //设置soap请求报文的相关属性
@@ -114,29 +112,29 @@ public class GangZhongLvInterfaceHttpFactory {
                     "<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
                     "  <soap:Header>\n" +
                     "    <KwsSoapHeader xmlns=\"http://www.shijinet.com.cn/kunlun/kws/1.1/\">\n" +
-                    "      <SessionId>44ffcc1d-8c66-4f40-b253-ddc85c0975b5</SessionId>\n" +
+                    "      <SessionId>"+sessionId+"</SessionId>\n" +
                     "      <RetCode></RetCode>\n" +
                     "      <ErrReason></ErrReason>\n" +
                     "    </KwsSoapHeader>\n" +
                     "  </soap:Header>\n" +
                     "  <soap:Body>\n" +
                     "    <AppLoginOut xmlns=\"http://www.shijinet.com.cn/kunlun/kws/1.1/\">\n" +
-                    "      <sid>44ffcc1d-8c66-4f40-b253-ddc85c0975b5</sid>\n" +
+                    "      <sid>"+sessionId+"</sid>\n" +
                     "    </AppLoginOut>\n" +
                     "  </soap:Body>\n" +
                     "</soap:Envelope>";
             GzlUrl = "http://58.251.19.224:8081/kws_www/SecurityService.asmx?op=AppLoginOut";
             SOAPAction = "http://www.shijinet.com.cn/kunlun/kws/1.1/AppLoginOut";
             String zhuxiao = zhuxiao(GzlUrl,SOAPAction,XmlS);
-            Envelope envelope=XmlUtil.XmlToBean(zhuxiao,Envelope.class);
-            AppLoginOutResult appLoginOutResult =  envelope.getBody().getAppLoginOutResult();
-            if(!appLoginOutResult.getAppLoginOutResult()){
+            Document document=XmlUtil.strXmlToDocument(zhuxiao);
+            String RetCode=XmlUtil.getValueByElementName(document,"RetCode");
+            if(!"6001".equals(RetCode)){
                 return "注销失败";
             }
         }
         return xml;
     }
-    public String zhuxiao(String GzlUrl,String SOAPAction,String XmlS) throws Exception{
+    public static String zhuxiao(String GzlUrl,String SOAPAction,String XmlS) throws Exception{
         //不传入数据时默认位AppLogin接口 返回SessionId
         String xml = new String();
         //设置soap请求报文的相关属性
